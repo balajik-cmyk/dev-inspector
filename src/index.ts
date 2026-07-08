@@ -32,6 +32,7 @@ export type {
   BoundingBox,
   CaptureMode,
   DevInspectorTheme,
+  DevInspectorLayout,
   HighlightRect,
   InspectorProperty,
   InspectorSection,

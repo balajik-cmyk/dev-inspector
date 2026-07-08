@@ -8,6 +8,8 @@ Drop-in React dev inspector — computed CSS, Figma-style spacing measurement, a
 npm install @balajik-cmyk/dev-inspector -D
 ```
 
+No token or registry setup needed — this is published to the public npm registry. To pick up a new release later, run `npm install @balajik-cmyk/dev-inspector@latest -D`.
+
 Peer dependencies: `react >= 18`, `react-dom >= 18`.
 
 ## Usage
@@ -49,6 +51,9 @@ import "@balajik-cmyk/dev-inspector/styles.css";
 | `storageKey` | `string` | `"dev_inspector_armed"` | sessionStorage key for armed state |
 | `zIndex` | `number` | `9999` | Overlay stacking |
 | `theme` | `"light" \| "dark" \| "auto"` | `"auto"` | Panel theme |
+| `layout` | `"widget" \| "classic"` | `"widget"` | Chat-widget launcher vs legacy button stack |
+| `offsetBottom` | `number` | `24` | Bottom offset for widget dock (px) |
+| `offsetRight` | `number` | `24` | Right offset for widget dock (px) |
 | `onAnnotationAdd` | `(a: Annotation) => void` | — | Hook when annotation saved |
 | `onCopy` | `(markdown: string) => void` | — | Hook when user copies |
 | `copyToClipboard` | `boolean` | `true` | Write to clipboard on copy |

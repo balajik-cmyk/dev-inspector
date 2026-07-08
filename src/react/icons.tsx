@@ -60,6 +60,26 @@ export function IconCheck({ size = 14, ...props }: IconProps) {
   );
 }
 
+export function IconCode({ size = 16, ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={stroke}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      {...props}
+    >
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </svg>
+  );
+}
+
 export function IconX({ size = 16, ...props }: IconProps) {
   return (
     <svg

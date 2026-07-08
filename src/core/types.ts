@@ -52,6 +52,8 @@ export type CaptureMode = "alt-click" | "armed-click";
 
 export type DevInspectorTheme = "light" | "dark" | "auto";
 
+export type DevInspectorLayout = "widget" | "classic";
+
 export const INSPECTOR_ATTR = "data-dev-inspector";
 export const MEASURE_COLOR = "#3b82f6";
 export const MEASURE_HATCH = `repeating-linear-gradient(-45deg, ${MEASURE_COLOR}40 0, ${MEASURE_COLOR}40 1.5px, transparent 1.5px, transparent 6px)`;

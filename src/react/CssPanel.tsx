@@ -44,6 +44,7 @@ export function CssPanel({
   showAnnotationForm,
   annotationForm,
   annotationList,
+  embedded = false,
 }: {
   spec: InspectorSpec;
   onClose: () => void;
@@ -51,11 +52,12 @@ export function CssPanel({
   showAnnotationForm?: boolean;
   annotationForm?: React.ReactNode;
   annotationList?: React.ReactNode;
+  embedded?: boolean;
 }) {
   const allCss = specToCss(spec);
 
   return (
-    <div className={styles.panel}>
+    <div className={embedded ? styles.panelEmbedded : styles.panel}>
       <div className={styles.panelHeader}>
         <div className={styles.panelTitle}>
           <p className={styles.label}>{spec.label}</p>

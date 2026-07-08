@@ -16,6 +16,7 @@ import {
   type Annotation,
   type CaptureMode,
   type DevInspectorTheme,
+  type DevInspectorLayout,
   type HighlightRect,
   type InspectorSpec,
   type MeasureBand,
@@ -23,7 +24,7 @@ import {
 import { AnnotationForm } from "./AnnotationForm";
 import { AnnotationList } from "./AnnotationList";
 import { CssPanel } from "./CssPanel";
-import { IconCrosshair } from "./icons";
+import { IconCode, IconCrosshair, IconX } from "./icons";
 import { MeasureOverlay } from "./MeasureOverlay";
 import { usePersistedState } from "./hooks/usePersistedState";
 import styles from "../styles/inspector.module.css";
@@ -34,6 +35,9 @@ export type DevInspectorProps = {
   storageKey?: string;
   zIndex?: number;
   theme?: DevInspectorTheme;
+  layout?: DevInspectorLayout;
+  offsetBottom?: number;
+  offsetRight?: number;
   onAnnotationAdd?: (annotation: Annotation) => void;
   onCopy?: (markdown: string) => void;
   copyToClipboard?: boolean;
@@ -70,6 +74,9 @@ export function DevInspector({
   storageKey = "dev_inspector_armed",
   zIndex = 9999,
   theme = "auto",
+  layout = "widget",
+  offsetBottom = 24,
+  offsetRight = 24,
   onAnnotationAdd,
   onCopy,
   copyToClipboard = true,
@@ -263,6 +270,34 @@ export function DevInspector({
       ? "Click to inspect · Escape to exit"
       : `${isMac ? "⌥ Option" : "Alt"} + click to inspect · click to interact`;
 
+  const cssPanel = selectedSpec ? (
+    <CssPanel
+      spec={selectedSpec}
+      onClose={clearSelection}
+      onCopy={handleCopy}
+      embedded={layout === "widget"}
+      annotationList={
+        <AnnotationList
+          annotations={annotations}
+          markdown={annotationsMarkdown}
+          onCopy={handleCopy}
+        />
+      }
+      showAnnotationForm={showAnnotationForm}
+      annotationForm={
+        <AnnotationForm
+          onSave={handleSaveAnnotation}
+          onCancel={() => setShowAnnotationForm(false)}
+        />
+      }
+    />
+  ) : null;
+
+  const dockStyle = {
+    bottom: offsetBottom,
+    right: offsetRight,
+  } as const;
+
   return (
     <div
       {...{ [INSPECTOR_ATTR]: "" }}
@@ -303,64 +338,113 @@ export function DevInspector({
         <MeasureOverlay bands={selectedRect ? measureBands : neighborBands} />
       ) : null}
 
-      <div className={styles.controls}>
-        {armed && !selectedSpec ? (
-          <div className={styles.tooltip}>{hintText}</div>
-        ) : null}
+      <div
+        className={
+          layout === "widget" ? styles.widgetDock : styles.controls
+        }
+        style={layout === "widget" ? dockStyle : undefined}
+      >
+        {layout === "widget" ? (
+          <>
+            {armed ? (
+              <div className={styles.widgetPanel}>
+                <div className={styles.widgetHeader}>
+                  <div className={styles.widgetHeaderMain}>
+                    <IconCrosshair size={18} />
+                    <span className={styles.widgetTitle}>Inspector</span>
+                    <span className={styles.widgetBadge}>Active</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnIcon} ${styles.btnGhost}`}
+                    onClick={disarm}
+                    aria-label="Close inspector"
+                  >
+                    <IconX />
+                  </button>
+                </div>
 
-        {armed && selectedSpec ? (
-          <div className={styles.tooltip}>
-            Hover any element to measure spacing
-          </div>
-        ) : null}
+                <div className={styles.widgetBody}>
+                  <p className={styles.widgetHint}>
+                    {selectedSpec
+                      ? "Hover any element to measure spacing"
+                      : hintText}
+                  </p>
 
-        {armed && selectedSpec ? (
-          <CssPanel
-            spec={selectedSpec}
-            onClose={clearSelection}
-            onCopy={handleCopy}
-            annotationList={
-              <AnnotationList
-                annotations={annotations}
-                markdown={annotationsMarkdown}
-                onCopy={handleCopy}
-              />
-            }
-            showAnnotationForm={showAnnotationForm}
-            annotationForm={
-              <AnnotationForm
-                onSave={handleSaveAnnotation}
-                onCancel={() => setShowAnnotationForm(false)}
-              />
-            }
-          />
-        ) : null}
+                  {cssPanel}
 
-        {armed && selectedSpec && !showAnnotationForm ? (
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnSm}`}
-            onClick={() => setShowAnnotationForm(true)}
-          >
-            Add annotation
-          </button>
-        ) : null}
+                  {armed && selectedSpec && !showAnnotationForm ? (
+                    <div className={styles.widgetFooter}>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary}`}
+                        onClick={() => setShowAnnotationForm(true)}
+                      >
+                        Add annotation
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
 
-        <button
-          type="button"
-          className={`${styles.btn} ${armed ? `${styles.btnPrimary} ${styles.btnPrimaryActive}` : ""}`}
-          onClick={() => {
-            if (armed) {
-              disarm();
-            } else {
-              setArmed(true);
-            }
-          }}
-          aria-pressed={armed}
-        >
-          <IconCrosshair />
-          {armed ? "Inspecting" : "Inspect"}
-        </button>
+            <button
+              type="button"
+              className={`${styles.widgetFab} ${armed ? styles.widgetFabActive : ""}`}
+              onClick={() => {
+                if (armed) {
+                  disarm();
+                } else {
+                  setArmed(true);
+                }
+              }}
+              aria-pressed={armed}
+              aria-label={armed ? "Close inspector" : "Open inspector"}
+            >
+              <IconCode size={24} />
+            </button>
+          </>
+        ) : (
+          <>
+            {armed && !selectedSpec ? (
+              <div className={styles.tooltip}>{hintText}</div>
+            ) : null}
+
+            {armed && selectedSpec ? (
+              <div className={styles.tooltip}>
+                Hover any element to measure spacing
+              </div>
+            ) : null}
+
+            {cssPanel}
+
+            {armed && selectedSpec && !showAnnotationForm ? (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSm}`}
+                onClick={() => setShowAnnotationForm(true)}
+              >
+                Add annotation
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              className={`${styles.btn} ${armed ? `${styles.btnPrimary} ${styles.btnPrimaryActive}` : ""}`}
+              onClick={() => {
+                if (armed) {
+                  disarm();
+                } else {
+                  setArmed(true);
+                }
+              }}
+              aria-pressed={armed}
+            >
+              <IconCrosshair />
+              {armed ? "Inspecting" : "Inspect"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
