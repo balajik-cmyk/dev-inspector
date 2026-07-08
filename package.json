@@ -1,0 +1,54 @@
+{
+  "name": "@balajik-cmyk/dev-inspector",
+  "version": "0.1.0",
+  "description": "Drop-in React dev inspector — CSS inspection, Figma spacing, and Agentation-style annotations",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balajik-cmyk/dev-inspector.git"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles.css": "./dist/index.css"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "esbuild-plugin-react18-css": "^0.0.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "react",
+    "devtools",
+    "inspector",
+    "css",
+    "design",
+    "annotation"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
