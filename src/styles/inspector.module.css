@@ -107,6 +107,90 @@
     0 8px 24px rgb(15 23 42 / 0.12);
 }
 
+.widgetToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.widgetToolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: var(--di-primary);
+  box-shadow:
+    0 4px 16px rgb(59 130 246 / 0.35),
+    0 8px 24px rgb(15 23 42 / 0.12);
+}
+
+.widgetToolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  color: var(--di-primary-fg);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.widgetToolBtn:hover {
+  background: rgb(255 255 255 / 0.28);
+  transform: scale(1.04);
+}
+
+.widgetToolBtnActive {
+  background: rgb(255 255 255 / 0.34);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.45);
+}
+
+.widgetToolBtnPlaceholder {
+  opacity: 0.92;
+}
+
+.widgetCloseFab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: var(--di-primary);
+  color: var(--di-primary-fg);
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgb(59 130 246 / 0.35),
+    0 8px 24px rgb(15 23 42 / 0.12);
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease;
+}
+
+.widgetCloseFab:hover {
+  transform: scale(1.04);
+  filter: brightness(1.05);
+}
+
+.widgetComingSoon {
+  margin: 0;
+  border-radius: 8px;
+  background: var(--di-tooltip-bg);
+  color: var(--di-tooltip-fg);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  box-shadow: var(--di-panel-shadow);
+  white-space: nowrap;
+}
+
 .widgetPanel {
   display: flex;
   width: min(380px, calc(100vw - 48px));

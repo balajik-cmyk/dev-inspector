@@ -24,6 +24,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "playground": "npm run dev --prefix playground",
     "prepublishOnly": "npm run build && npm test"
   },
   "peerDependencies": {

@@ -24,7 +24,7 @@ import {
 import { AnnotationForm } from "./AnnotationForm";
 import { AnnotationList } from "./AnnotationList";
 import { CssPanel } from "./CssPanel";
-import { IconCode, IconCrosshair, IconX } from "./icons";
+import { IconCode, IconComment, IconCrosshair, IconX } from "./icons";
 import { MeasureOverlay } from "./MeasureOverlay";
 import { usePersistedState } from "./hooks/usePersistedState";
 import styles from "../styles/inspector.module.css";
@@ -42,6 +42,8 @@ export type DevInspectorProps = {
   onCopy?: (markdown: string) => void;
   copyToClipboard?: boolean;
 };
+
+type WidgetMode = "inspect" | "comment";
 
 function shouldCaptureClick(
   event: MouseEvent | PointerEvent,
@@ -81,6 +83,8 @@ export function DevInspector({
   onCopy,
   copyToClipboard = true,
 }: DevInspectorProps) {
+  const [dockExpanded, setDockExpanded] = React.useState(false);
+  const [widgetMode, setWidgetMode] = React.useState<WidgetMode>("inspect");
   const [armed, setArmed] = usePersistedState(storageKey, false);
   const [hoverRect, setHoverRect] = React.useState<HighlightRect | null>(null);
   const [selectedEl, setSelectedEl] = React.useState<Element | null>(null);
@@ -112,6 +116,26 @@ export function DevInspector({
     setNeighborBands([]);
     clearSelection();
   }, [clearSelection, setArmed]);
+
+  const collapseDock = React.useCallback(() => {
+    setDockExpanded(false);
+    setWidgetMode("inspect");
+    disarm();
+  }, [disarm]);
+
+  const activateInspect = React.useCallback(() => {
+    setWidgetMode("inspect");
+    setArmed(true);
+  }, [setArmed]);
+
+  const activateCommentPlaceholder = React.useCallback(() => {
+    setWidgetMode("comment");
+    disarm();
+  }, [disarm]);
+
+  React.useEffect(() => {
+    if (armed) setDockExpanded(true);
+  }, [armed]);
 
   const refreshSelectedRect = React.useCallback(() => {
     if (!selectedEl) return;
@@ -222,9 +246,13 @@ export function DevInspector({
       }
       if (selectedSpec) {
         clearSelection();
-      } else {
-        disarm();
+        return;
       }
+      if (layout === "widget" && dockExpanded) {
+        collapseDock();
+        return;
+      }
+      disarm();
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -232,11 +260,26 @@ export function DevInspector({
   }, [
     armed,
     clearSelection,
+    collapseDock,
     disarm,
+    dockExpanded,
     enabled,
+    layout,
     selectedSpec,
     showAnnotationForm,
   ]);
+
+  React.useEffect(() => {
+    if (!enabled || layout !== "widget" || !dockExpanded || armed) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      collapseDock();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [armed, collapseDock, dockExpanded, enabled, layout]);
 
   React.useEffect(() => {
     if (!selectedEl) return;
@@ -346,7 +389,7 @@ export function DevInspector({
       >
         {layout === "widget" ? (
           <>
-            {armed ? (
+            {armed && widgetMode === "inspect" ? (
               <div className={styles.widgetPanel}>
                 <div className={styles.widgetHeader}>
                   <div className={styles.widgetHeaderMain}>
@@ -358,7 +401,7 @@ export function DevInspector({
                     type="button"
                     className={`${styles.btn} ${styles.btnIcon} ${styles.btnGhost}`}
                     onClick={disarm}
-                    aria-label="Close inspector"
+                    aria-label="Close inspector panel"
                   >
                     <IconX />
                   </button>
@@ -388,21 +431,68 @@ export function DevInspector({
               </div>
             ) : null}
 
-            <button
-              type="button"
-              className={`${styles.widgetFab} ${armed ? styles.widgetFabActive : ""}`}
-              onClick={() => {
-                if (armed) {
-                  disarm();
-                } else {
-                  setArmed(true);
-                }
-              }}
-              aria-pressed={armed}
-              aria-label={armed ? "Close inspector" : "Open inspector"}
-            >
-              <IconCode size={24} />
-            </button>
+            {dockExpanded && widgetMode === "comment" ? (
+              <p className={styles.widgetComingSoon} role="status">
+                Comments coming soon
+              </p>
+            ) : null}
+
+            {dockExpanded ? (
+              <div className={styles.widgetToolbar}>
+                <div className={styles.widgetToolbarGroup}>
+                  <button
+                    type="button"
+                    className={`${styles.widgetToolBtn} ${
+                      widgetMode === "inspect" && armed
+                        ? styles.widgetToolBtnActive
+                        : ""
+                    }`}
+                    onClick={activateInspect}
+                    aria-pressed={widgetMode === "inspect" && armed}
+                    aria-label="Inspect"
+                    title="Inspect"
+                  >
+                    <IconCode size={22} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.widgetToolBtn} ${styles.widgetToolBtnPlaceholder} ${
+                      widgetMode === "comment"
+                        ? styles.widgetToolBtnActive
+                        : ""
+                    }`}
+                    onClick={activateCommentPlaceholder}
+                    aria-pressed={widgetMode === "comment"}
+                    aria-label="Comment (coming soon)"
+                    title="Comment (coming soon)"
+                  >
+                    <IconComment size={22} />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className={styles.widgetCloseFab}
+                  onClick={collapseDock}
+                  aria-label="Collapse toolbar"
+                  title="Collapse"
+                >
+                  <IconX size={20} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={styles.widgetFab}
+                onClick={() => {
+                  setDockExpanded(true);
+                  activateInspect();
+                }}
+                aria-expanded={false}
+                aria-label="Open inspector"
+              >
+                <IconCode size={24} />
+              </button>
+            )}
           </>
         ) : (
           <>

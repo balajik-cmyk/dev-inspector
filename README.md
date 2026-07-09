@@ -74,6 +74,16 @@ npm test
 npm run build
 ```
 
+### Playground
+
+Interactive sample app for manual testing (CSS inspect, spacing, annotations):
+
+```bash
+npm run playground
+```
+
+Opens at [http://localhost:5175](http://localhost:5175). Source lives in `playground/` and aliases the local package from `src/`.
+
 ## License
 
 MIT
