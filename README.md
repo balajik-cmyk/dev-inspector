@@ -1,6 +1,6 @@
 # @balajik-cmyk/dev-inspector
 
-Drop-in React dev inspector — computed CSS, Figma-style spacing measurement, and Agentation-style annotations with markdown export.
+Drop-in React dev inspector — computed CSS, Figma-style spacing measurement, Agentation-style annotations, and optional Firebase-backed comments.
 
 ## Install
 
@@ -40,6 +40,7 @@ import "@balajik-cmyk/dev-inspector/styles.css";
 - **CSS inspector** — computed layout, typography, background, border, effects, and motion
 - **Figma spacing** — neighbor bands on hover; distance guides between two picked elements
 - **Annotations** — add notes on picked elements; copy structured markdown for AI agents
+- **Comments (opt-in)** — BYO Firebase: email OTP, page/element pins, replies, reactions
 - **Radix-safe capture** — default `alt-click` mode lets normal clicks pass through
 
 ## Props
@@ -57,6 +58,24 @@ import "@balajik-cmyk/dev-inspector/styles.css";
 | `onAnnotationAdd` | `(a: Annotation) => void` | — | Hook when annotation saved |
 | `onCopy` | `(markdown: string) => void` | — | Hook when user copies |
 | `copyToClipboard` | `boolean` | `true` | Write to clipboard on copy |
+| `comments` | `boolean` | `false` | Enable Comments mode (needs `firebaseConfig`) |
+| `firebaseConfig` | `DevInspectorFirebaseConfig` | — | Firebase web config for Comments |
+| `commentsFunctionsRegion` | `string` | `"us-central1"` | Cloud Functions region |
+| `commentsAllowedEmailDomain` | `string` | `"birdeye.com"` | OTP email allowlist domain |
+| `commentsPageUrl` | `string` | — | Explicit router URL for `pageId` (SPA) |
+| `commentsHideShortcut` | `string \| false` | `"Shift+C"` | Hide pins + drawer; `false` disables |
+| `onCommentAdd` | `(c: Comment) => void` | — | Hook when a comment is posted |
+| `onCommentAuthChange` | `(user \| null) => void` | — | Auth session changes |
+
+## Comments backend setup
+
+Comments are **opt-in** and use **your** Firebase project (Auth + Firestore + Functions). Deploy the templates in [`firebase/`](firebase/README.md):
+
+1. Blaze plan + Trigger Email extension + SMTP/SendGrid
+2. Deploy `firestore.rules` and `requestOtp` / `verifyOtp`
+3. Pass `comments` + `firebaseConfig` into `DevInspector`
+
+Default allowlist is `@birdeye.com` (override with `commentsAllowedEmailDomain`). In Comment mode, **Shift+C** hides pins and the comments drawer (session stays signed in).
 
 ## Markdown export
 

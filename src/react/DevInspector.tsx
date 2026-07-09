@@ -1,10 +1,11 @@
 import * as React from "react";
-import { buildInspectorSpec, specToCss } from "../core/inspectorCss";
+import { buildInspectorSpec, formatSelectorHint, specToCss } from "../core/inspectorCss";
 import {
   boundingBoxFromElement,
   isCaptureGesture,
   isInsideInspector,
   isMac,
+  pickCommentTarget,
   pickInspectableElement,
   rectFromElement,
 } from "../core/dom";
@@ -33,6 +34,28 @@ import {
 } from "./icons";
 import { MeasureOverlay } from "./MeasureOverlay";
 import { usePersistedState } from "./hooks/usePersistedState";
+import {
+  CommentsProvider,
+  CommentsPinsLayer,
+  CommentsPanelSlot,
+  CommentsFloatingLayer,
+} from "./comments/CommentsHost";
+import {
+  isEditableTarget,
+  parseHideShortcut,
+} from "./comments/parseHideShortcut";
+import type {
+  Comment,
+  CommentAuthUser,
+  CommentPinData,
+  DevInspectorFirebaseConfig,
+} from "./comments/types";
+import {
+  DEFAULT_ALLOWED_EMAIL_DOMAIN,
+  DEFAULT_FUNCTIONS_REGION,
+  DEFAULT_HIDE_SHORTCUT,
+  DEFAULT_MOCK_OTP,
+} from "./comments/types";
 import styles from "../styles/inspector.module.css";
 
 export type DevInspectorProps = {
@@ -47,6 +70,22 @@ export type DevInspectorProps = {
   onAnnotationAdd?: (annotation: Annotation) => void;
   onCopy?: (markdown: string) => void;
   copyToClipboard?: boolean;
+  /** Opt-in Comments (v0.4). Requires `firebaseConfig`. */
+  comments?: boolean;
+  firebaseConfig?: DevInspectorFirebaseConfig;
+  commentsFunctionsRegion?: string;
+  commentsAllowedEmailDomain?: string;
+  /** Host router URL for SPA pageId (preferred when available). */
+  commentsPageUrl?: string;
+  /** Default `"Shift+C"`; pass `false` to disable. */
+  commentsHideShortcut?: string | false;
+  /** Local dev: connect Auth/Firestore to Firebase emulators. */
+  commentsUseEmulators?: boolean;
+  /** Local dev: skip OTP email; verify with `commentsMockOtpCode` (default `000000`). */
+  commentsMockOtp?: boolean;
+  commentsMockOtpCode?: string;
+  onCommentAdd?: (comment: Comment) => void;
+  onCommentAuthChange?: (user: CommentAuthUser | null) => void;
 };
 
 type WidgetMode = "inspect" | "comment";
@@ -76,6 +115,14 @@ function createAnnotation(
   };
 }
 
+function pinDataFromElement(el: Element): CommentPinData {
+  return {
+    elementPath: buildElementPath(el),
+    selectorHint: formatSelectorHint(el),
+    boundingBox: boundingBoxFromElement(el),
+  };
+}
+
 export function DevInspector({
   enabled = true,
   captureMode = "alt-click",
@@ -88,7 +135,29 @@ export function DevInspector({
   onAnnotationAdd,
   onCopy,
   copyToClipboard = true,
+  comments = false,
+  firebaseConfig,
+  commentsFunctionsRegion = DEFAULT_FUNCTIONS_REGION,
+  commentsAllowedEmailDomain = DEFAULT_ALLOWED_EMAIL_DOMAIN,
+  commentsPageUrl,
+  commentsHideShortcut = DEFAULT_HIDE_SHORTCUT,
+  commentsUseEmulators = false,
+  commentsMockOtp = false,
+  commentsMockOtpCode = DEFAULT_MOCK_OTP,
+  onCommentAdd,
+  onCommentAuthChange,
 }: DevInspectorProps) {
+  const commentsEnabled = Boolean(comments && firebaseConfig);
+  const commentsMisconfigured = Boolean(comments && !firebaseConfig);
+  const useEmulators = commentsUseEmulators || commentsMockOtp;
+
+  React.useEffect(() => {
+    if (!commentsMisconfigured) return;
+    console.error(
+      "[DevInspector] `comments` is true but `firebaseConfig` is missing — Comments panel disabled.",
+    );
+  }, [commentsMisconfigured]);
+
   const [dockExpanded, setDockExpanded] = React.useState(false);
   const [widgetMode, setWidgetMode] = React.useState<WidgetMode>("inspect");
   const [armed, setArmed] = usePersistedState(storageKey, false);
@@ -106,6 +175,32 @@ export function DevInspector({
   const [neighborBands, setNeighborBands] = React.useState<MeasureBand[]>([]);
   const [annotations, setAnnotations] = React.useState<Annotation[]>([]);
   const [showAnnotationForm, setShowAnnotationForm] = React.useState(false);
+
+  const [commentsHidden, setCommentsHidden] = React.useState(false);
+  const [selectedCommentId, setSelectedCommentId] = React.useState<string | null>(
+    null,
+  );
+  const [commentDraft, setCommentDraft] = React.useState<{
+    anchor: { x: number; y: number };
+    pin: CommentPinData;
+    targetRect: HighlightRect;
+  } | null>(null);
+  const [pinLayoutTick, setPinLayoutTick] = React.useState(0);
+  const [commentAuthUser, setCommentAuthUser] = React.useState<CommentAuthUser | null>(
+    null,
+  );
+
+  const clearCommentDraft = React.useCallback(() => {
+    setCommentDraft(null);
+  }, []);
+
+  const handleCommentAuthChange = React.useCallback(
+    (user: CommentAuthUser | null) => {
+      setCommentAuthUser(user);
+      onCommentAuthChange?.(user);
+    },
+    [onCommentAuthChange],
+  );
 
   const clearSelection = React.useCallback(() => {
     setSelectedEl(null);
@@ -126,18 +221,27 @@ export function DevInspector({
   const collapseDock = React.useCallback(() => {
     setDockExpanded(false);
     setWidgetMode("inspect");
+    clearCommentDraft();
     disarm();
-  }, [disarm]);
+  }, [clearCommentDraft, disarm]);
 
   const activateInspect = React.useCallback(() => {
     setWidgetMode("inspect");
+    clearCommentDraft();
     setArmed(true);
-  }, [setArmed]);
+  }, [clearCommentDraft, setArmed]);
 
-  const activateCommentPlaceholder = React.useCallback(() => {
+  const activateComment = React.useCallback(() => {
     setWidgetMode("comment");
+    setCommentsHidden(false);
     disarm();
   }, [disarm]);
+
+  React.useEffect(() => {
+    if (widgetMode === "comment" && armed) {
+      disarm();
+    }
+  }, [armed, disarm, widgetMode]);
 
   React.useEffect(() => {
     if (armed) setDockExpanded(true);
@@ -242,23 +346,72 @@ export function DevInspector({
   }, [armed, enabled, selectedEl, selectedSpec]);
 
   React.useEffect(() => {
-    if (!enabled || !armed) return;
+    if (!enabled || !commentsEnabled || widgetMode !== "comment" || commentsHidden) {
+      return;
+    }
+    if (!commentAuthUser) return;
+
+    const onClick = (event: MouseEvent) => {
+      if (isInsideInspector(event.target)) return;
+      if (isEditableTarget(event.target)) return;
+      const el = pickCommentTarget(event.clientX, event.clientY);
+      if (!el) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setCommentDraft({
+        anchor: { x: event.clientX, y: event.clientY },
+        pin: pinDataFromElement(el),
+        targetRect: rectFromElement(el),
+      });
+    };
+
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [
+    commentAuthUser,
+    commentsEnabled,
+    commentsHidden,
+    enabled,
+    widgetMode,
+  ]);
+
+  React.useEffect(() => {
+    if (!enabled) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (showAnnotationForm) {
-        setShowAnnotationForm(false);
+
+      if (commentDraft) {
+        clearCommentDraft();
         return;
       }
-      if (selectedSpec) {
-        clearSelection();
+
+      if (commentsEnabled && widgetMode === "comment") {
+        setWidgetMode("inspect");
+        disarm();
         return;
       }
-      if (layout === "widget" && dockExpanded) {
+
+      if (armed) {
+        if (showAnnotationForm) {
+          setShowAnnotationForm(false);
+          return;
+        }
+        if (selectedSpec) {
+          clearSelection();
+          return;
+        }
+        if (layout === "widget" && dockExpanded) {
+          collapseDock();
+          return;
+        }
+        disarm();
+        return;
+      }
+
+      if (layout === "widget" && dockExpanded && !armed) {
         collapseDock();
-        return;
       }
-      disarm();
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -266,26 +419,44 @@ export function DevInspector({
   }, [
     armed,
     clearSelection,
+    commentDraft,
+    clearCommentDraft,
     collapseDock,
+    commentsEnabled,
     disarm,
     dockExpanded,
     enabled,
     layout,
     selectedSpec,
     showAnnotationForm,
+    widgetMode,
   ]);
 
   React.useEffect(() => {
-    if (!enabled || layout !== "widget" || !dockExpanded || armed) return;
+    if (!enabled || !commentsEnabled) return;
+    const matches = parseHideShortcut(commentsHideShortcut);
+    if (!matches) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      collapseDock();
+      if (isEditableTarget(event.target)) return;
+      const inCommentContext =
+        dockExpanded && (widgetMode === "comment" || commentsHidden);
+      if (!inCommentContext) return;
+      if (!matches(event)) return;
+      event.preventDefault();
+      setCommentsHidden((h) => !h);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [armed, collapseDock, dockExpanded, enabled, layout]);
+  }, [
+    commentsEnabled,
+    commentsHidden,
+    commentsHideShortcut,
+    dockExpanded,
+    enabled,
+    widgetMode,
+  ]);
 
   React.useEffect(() => {
     if (!selectedEl) return;
@@ -297,6 +468,43 @@ export function DevInspector({
       window.removeEventListener("resize", onLayout);
     };
   }, [refreshSelectedRect, selectedEl]);
+
+  React.useEffect(() => {
+    if (!commentsEnabled || widgetMode !== "comment" || commentsHidden) return;
+    const bump = () => setPinLayoutTick((t) => t + 1);
+    window.addEventListener("scroll", bump, true);
+    window.addEventListener("resize", bump);
+    const mo = new MutationObserver(bump);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      window.removeEventListener("scroll", bump, true);
+      window.removeEventListener("resize", bump);
+      mo.disconnect();
+    };
+  }, [commentsEnabled, commentsHidden, widgetMode]);
+
+  // Figma: C enters comment mode (Shift+C still hides pins/drawer).
+  React.useEffect(() => {
+    if (!enabled || !commentsEnabled || commentsHidden) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (event.key.toLowerCase() !== "c") return;
+      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (!dockExpanded) return;
+      event.preventDefault();
+      activateComment();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    activateComment,
+    commentsEnabled,
+    commentsHidden,
+    dockExpanded,
+    enabled,
+  ]);
 
   if (!enabled) return null;
 
@@ -318,6 +526,8 @@ export function DevInspector({
     captureMode === "armed-click"
       ? "Click to inspect · Escape to exit"
       : `${isMac ? "⌥ Option" : "Alt"} + click to inspect · click to interact`;
+
+  const showCommentStub = !comments && dockExpanded && widgetMode === "comment";
 
   const cssPanel = selectedSpec ? (
     <CssPanel
@@ -346,10 +556,15 @@ export function DevInspector({
     right: offsetRight,
   } as const;
 
-  return (
+  const commentModeActive =
+    commentsEnabled && widgetMode === "comment" && !commentsHidden;
+
+  const tree = (
     <div
       {...{ [INSPECTOR_ATTR]: "" }}
-      className={`${styles.root} ${themeClass}`.trim()}
+      className={`${styles.root} ${themeClass} ${
+        commentModeActive ? styles.commentPlacementActive : ""
+      }`.trim()}
       style={{ zIndex }}
     >
       {armed && activeRect ? (
@@ -364,6 +579,18 @@ export function DevInspector({
         >
           <span className={styles.highlightLabel}>{activeRect.label}</span>
         </div>
+      ) : null}
+
+      {commentDraft ? (
+        <div
+          className={styles.commentTargetHighlight}
+          style={{
+            top: commentDraft.targetRect.top,
+            left: commentDraft.targetRect.left,
+            width: commentDraft.targetRect.width,
+            height: commentDraft.targetRect.height,
+          }}
+        />
       ) : null}
 
       {armed && measureRect ? (
@@ -385,6 +612,9 @@ export function DevInspector({
       {armed ? (
         <MeasureOverlay bands={selectedRect ? measureBands : neighborBands} />
       ) : null}
+
+      {commentsEnabled ? <CommentsPinsLayer /> : null}
+      {commentsEnabled ? <CommentsFloatingLayer /> : null}
 
       <div
         className={
@@ -411,20 +641,32 @@ export function DevInspector({
                   </button>
                 </div>
 
-                <div className={styles.widgetBody}>
-                  {cssPanel}
-                </div>
+                <div className={styles.widgetBody}>{cssPanel}</div>
               </div>
             ) : null}
 
-            {dockExpanded && widgetMode === "comment" ? (
+            {commentsEnabled ? <CommentsPanelSlot /> : null}
+
+            {showCommentStub ? (
               <p className={styles.widgetComingSoon} role="status">
                 Comments coming soon
               </p>
             ) : null}
 
+            {commentsMisconfigured &&
+            dockExpanded &&
+            widgetMode === "comment" ? (
+              <p className={styles.widgetComingSoon} role="status">
+                Comments need firebaseConfig
+              </p>
+            ) : null}
+
             {dockExpanded ? (
-              <div className={styles.widgetToolbar} role="toolbar" aria-label="Dev Inspector">
+              <div
+                className={styles.widgetToolbar}
+                role="toolbar"
+                aria-label="Dev Inspector"
+              >
                 <button
                   type="button"
                   className={`${styles.widgetToolBtn} ${styles.widgetToolBtnInspect} ${
@@ -443,12 +685,14 @@ export function DevInspector({
                 <button
                   type="button"
                   className={`${styles.widgetToolBtn} ${styles.widgetToolBtnComment} ${
-                    widgetMode === "comment" ? styles.widgetToolBtnActive : ""
+                    widgetMode === "comment" && !commentsHidden
+                      ? styles.widgetToolBtnActive
+                      : ""
                   }`}
-                  onClick={activateCommentPlaceholder}
-                  aria-pressed={widgetMode === "comment"}
-                  aria-label="Comment (coming soon)"
-                  title="Comment (coming soon)"
+                  onClick={activateComment}
+                  aria-pressed={widgetMode === "comment" && !commentsHidden}
+                  aria-label={comments ? "Comment" : "Comment (coming soon)"}
+                  title={comments ? "Comment" : "Comment (coming soon)"}
                 >
                   <IconComment size={18} />
                 </button>
@@ -514,4 +758,46 @@ export function DevInspector({
       </div>
     </div>
   );
+
+  if (commentsEnabled && firebaseConfig) {
+    return (
+      <CommentsProvider
+        firebaseConfig={firebaseConfig}
+        functionsRegion={commentsFunctionsRegion}
+        allowedEmailDomain={commentsAllowedEmailDomain}
+        commentsPageUrl={commentsPageUrl}
+        useEmulators={useEmulators}
+        mockOtp={commentsMockOtp}
+        mockOtpCode={commentsMockOtpCode}
+        commentsHidden={commentsHidden}
+        widgetModeComment={widgetMode === "comment"}
+        dockExpanded={dockExpanded}
+        selectedCommentId={selectedCommentId}
+        onSelectCommentId={setSelectedCommentId}
+        commentDraft={
+          commentDraft
+            ? { anchor: commentDraft.anchor, pin: commentDraft.pin }
+            : null
+        }
+        onClearDraft={clearCommentDraft}
+        onClosePanel={() => {
+          setWidgetMode("inspect");
+          clearCommentDraft();
+        }}
+        onCommentAdd={onCommentAdd}
+        onCommentAuthChange={handleCommentAuthChange}
+        onOpenFromPin={(id) => {
+          setWidgetMode("comment");
+          setCommentsHidden(false);
+          setDockExpanded(true);
+          setSelectedCommentId(id);
+        }}
+        pinLayoutTick={pinLayoutTick}
+      >
+        {tree}
+      </CommentsProvider>
+    );
+  }
+
+  return tree;
 }

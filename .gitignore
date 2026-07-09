@@ -2,5 +2,11 @@ node_modules/
 dist/
 playground/node_modules/
 playground/dist/
+playground/.env
+firebase/functions/node_modules/
+firebase/functions/lib/
+firebase/.firebaserc
+firebase/firebase-debug.log
+firebase/firestore-debug.log
 *.tsbuildinfo
 .DS_Store

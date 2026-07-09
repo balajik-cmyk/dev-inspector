@@ -1,7 +1,7 @@
 {
   "name": "@balajik-cmyk/dev-inspector",
-  "version": "0.1.0",
-  "description": "Drop-in React dev inspector — CSS inspection, Figma spacing, and Agentation-style annotations",
+  "version": "0.4.0",
+  "description": "Drop-in React dev inspector — CSS inspection, Figma spacing, annotations, and opt-in Firebase comments",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,12 +19,17 @@
     },
     "./styles.css": "./dist/index.css"
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "firebase"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "playground": "npm run dev --prefix playground",
+    "emulators": "cd firebase && PATH=\"/opt/homebrew/opt/openjdk@21/bin:$PATH\" npx firebase emulators:start --only auth,firestore",
+    "emulators:full": "cd firebase && PATH=\"/opt/homebrew/opt/openjdk@21/bin:$PATH\" npx firebase emulators:start --only auth,firestore,functions",
     "prepublishOnly": "npm run build && npm test"
   },
   "peerDependencies": {
@@ -35,6 +40,7 @@
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "esbuild-plugin-react18-css": "^0.0.4",
+    "firebase-tools": "^15.22.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsup": "^8.4.0",
@@ -50,6 +56,10 @@
     "annotation"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "dependencies": {
+    "firebase": "^12.16.0"
   }
 }

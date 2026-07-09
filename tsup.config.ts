@@ -18,7 +18,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ["react", "react-dom"],
+  external: ["react", "react-dom", "firebase", /^firebase\//],
   esbuildPlugins: [cssPlugin({ inject: true })],
   outExtension({ format }) {
     return { js: format === "cjs" ? ".cjs" : ".js" };

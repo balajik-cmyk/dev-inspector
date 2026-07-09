@@ -18,6 +18,17 @@ export function pickInspectableElement(x: number, y: number): Element | null {
   return null;
 }
 
+/** Pick target for comment pins — includes `body` when nothing else matches. */
+export function pickCommentTarget(x: number, y: number): Element | null {
+  const stack = document.elementsFromPoint(x, y);
+  for (const el of stack) {
+    if (el.closest(`[${INSPECTOR_ATTR}]`)) continue;
+    if (el === document.documentElement) continue;
+    return el;
+  }
+  return document.body;
+}
+
 export function rectFromElement(el: Element): HighlightRect {
   const rect = el.getBoundingClientRect();
   return {

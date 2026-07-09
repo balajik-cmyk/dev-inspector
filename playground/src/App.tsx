@@ -1,4 +1,14 @@
-import { DevInspector } from "@balajik-cmyk/dev-inspector";
+import { DevInspector, demoFirebaseConfig } from "@balajik-cmyk/dev-inspector";
+
+const useEmulators = import.meta.env.VITE_COMMENTS_EMULATORS === "true";
+const mockOtp = import.meta.env.VITE_COMMENTS_MOCK_OTP === "true";
+const projectId =
+  import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "demo-dev-inspector";
+
+const commentsEnabled = useEmulators || mockOtp;
+const firebaseConfig = commentsEnabled
+  ? demoFirebaseConfig(projectId)
+  : undefined;
 
 export function App() {
   return (
@@ -9,7 +19,21 @@ export function App() {
           <h1>Dev Inspector sample</h1>
           <p className="lede">
             Open the dock (bottom-right), then use Inspect (⌥/Alt+click) for CSS
-            and spacing. Comment is a placeholder for a later feature.
+            and spacing.
+            {commentsEnabled ? (
+              <>
+                {" "}
+                Comments are on in <strong>emulator + mock OTP</strong> mode —
+                use <code>you@birdeye.com</code> and code{" "}
+                <code>000000</code>.
+              </>
+            ) : (
+              <>
+                {" "}
+                To try Comments locally, copy <code>playground/.env.example</code>{" "}
+                to <code>.env</code> and start Firebase emulators.
+              </>
+            )}
           </p>
           <div className="hero-actions">
             <button type="button" className="btn btn-primary">
@@ -73,7 +97,14 @@ export function App() {
         </footer>
       </div>
 
-      <DevInspector captureMode="alt-click" theme="auto" />
+      <DevInspector
+        captureMode="alt-click"
+        theme="auto"
+        comments={commentsEnabled}
+        firebaseConfig={firebaseConfig}
+        commentsUseEmulators={useEmulators}
+        commentsMockOtp={mockOtp}
+      />
     </>
   );
 }

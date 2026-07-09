@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    exclude: ["firebase/**", "node_modules/**", "dist/**", "playground/**"],
   },
 });
