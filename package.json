@@ -1,6 +1,6 @@
 {
   "name": "@balajik-cmyk/dev-inspector",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Drop-in React dev inspector — CSS inspection, Figma spacing, and Agentation-style annotations",
   "license": "MIT",
   "repository": {
@@ -50,6 +50,7 @@
     "annotation"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }
