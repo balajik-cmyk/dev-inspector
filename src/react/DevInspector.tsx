@@ -24,7 +24,13 @@ import {
 import { AnnotationForm } from "./AnnotationForm";
 import { AnnotationList } from "./AnnotationList";
 import { CssPanel } from "./CssPanel";
-import { IconCode, IconComment, IconCrosshair, IconX } from "./icons";
+import {
+  IconCode,
+  IconComment,
+  IconCrosshair,
+  IconPointer,
+  IconX,
+} from "./icons";
 import { MeasureOverlay } from "./MeasureOverlay";
 import { usePersistedState } from "./hooks/usePersistedState";
 import styles from "../styles/inspector.module.css";
@@ -316,7 +322,6 @@ export function DevInspector({
   const cssPanel = selectedSpec ? (
     <CssPanel
       spec={selectedSpec}
-      onClose={clearSelection}
       onCopy={handleCopy}
       embedded={layout === "widget"}
       annotationList={
@@ -389,18 +394,17 @@ export function DevInspector({
       >
         {layout === "widget" ? (
           <>
-            {armed && widgetMode === "inspect" ? (
+            {armed && widgetMode === "inspect" && selectedSpec ? (
               <div className={styles.widgetPanel}>
                 <div className={styles.widgetHeader}>
                   <div className={styles.widgetHeaderMain}>
                     <IconCrosshair size={18} />
                     <span className={styles.widgetTitle}>Inspector</span>
-                    <span className={styles.widgetBadge}>Active</span>
                   </div>
                   <button
                     type="button"
                     className={`${styles.btn} ${styles.btnIcon} ${styles.btnGhost}`}
-                    onClick={disarm}
+                    onClick={clearSelection}
                     aria-label="Close inspector panel"
                   >
                     <IconX />
@@ -408,25 +412,7 @@ export function DevInspector({
                 </div>
 
                 <div className={styles.widgetBody}>
-                  <p className={styles.widgetHint}>
-                    {selectedSpec
-                      ? "Hover any element to measure spacing"
-                      : hintText}
-                  </p>
-
                   {cssPanel}
-
-                  {armed && selectedSpec && !showAnnotationForm ? (
-                    <div className={styles.widgetFooter}>
-                      <button
-                        type="button"
-                        className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary}`}
-                        onClick={() => setShowAnnotationForm(true)}
-                      >
-                        Add annotation
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -438,37 +424,37 @@ export function DevInspector({
             ) : null}
 
             {dockExpanded ? (
-              <div className={styles.widgetToolbar}>
-                <div className={styles.widgetToolbarGroup}>
-                  <button
-                    type="button"
-                    className={`${styles.widgetToolBtn} ${
-                      widgetMode === "inspect" && armed
-                        ? styles.widgetToolBtnActive
-                        : ""
-                    }`}
-                    onClick={activateInspect}
-                    aria-pressed={widgetMode === "inspect" && armed}
-                    aria-label="Inspect"
-                    title="Inspect"
-                  >
-                    <IconCode size={22} />
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.widgetToolBtn} ${styles.widgetToolBtnPlaceholder} ${
-                      widgetMode === "comment"
-                        ? styles.widgetToolBtnActive
-                        : ""
-                    }`}
-                    onClick={activateCommentPlaceholder}
-                    aria-pressed={widgetMode === "comment"}
-                    aria-label="Comment (coming soon)"
-                    title="Comment (coming soon)"
-                  >
-                    <IconComment size={22} />
-                  </button>
-                </div>
+              <div className={styles.widgetToolbar} role="toolbar" aria-label="Dev Inspector">
+                <button
+                  type="button"
+                  className={`${styles.widgetToolBtn} ${styles.widgetToolBtnInspect} ${
+                    widgetMode === "inspect" && armed
+                      ? styles.widgetToolBtnActive
+                      : ""
+                  }`}
+                  onClick={activateInspect}
+                  aria-pressed={widgetMode === "inspect" && armed}
+                  aria-label="Inspect"
+                  title="Inspect"
+                >
+                  <IconPointer size={18} />
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.widgetToolBtn} ${styles.widgetToolBtnComment} ${
+                    widgetMode === "comment" ? styles.widgetToolBtnActive : ""
+                  }`}
+                  onClick={activateCommentPlaceholder}
+                  aria-pressed={widgetMode === "comment"}
+                  aria-label="Comment (coming soon)"
+                  title="Comment (coming soon)"
+                >
+                  <IconComment size={18} />
+                </button>
+
+                <span className={styles.widgetToolbarDivider} aria-hidden />
+
                 <button
                   type="button"
                   className={styles.widgetCloseFab}
@@ -476,7 +462,7 @@ export function DevInspector({
                   aria-label="Collapse toolbar"
                   title="Collapse"
                 >
-                  <IconX size={20} />
+                  <IconX size={16} />
                 </button>
               </div>
             ) : (
@@ -490,7 +476,7 @@ export function DevInspector({
                 aria-expanded={false}
                 aria-label="Open inspector"
               >
-                <IconCode size={24} />
+                <IconCode size={20} />
               </button>
             )}
           </>
@@ -507,16 +493,6 @@ export function DevInspector({
             ) : null}
 
             {cssPanel}
-
-            {armed && selectedSpec && !showAnnotationForm ? (
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnSm}`}
-                onClick={() => setShowAnnotationForm(true)}
-              >
-                Add annotation
-              </button>
-            ) : null}
 
             <button
               type="button"

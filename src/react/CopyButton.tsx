@@ -27,12 +27,12 @@ export function CopyButton({
   return (
     <button
       type="button"
-      className={`${styles.btn} ${styles.btnSm}`}
+      className={`${styles.btn} ${styles.btnIcon} ${styles.btnGhost}`}
       onClick={handleCopy}
-      aria-label={label}
+      aria-label={copied ? "Copied" : label}
+      title={copied ? "Copied" : label}
     >
       {copied ? <IconCheck /> : <IconCopy />}
-      {copied ? "Copied" : "Copy"}
     </button>
   );
 }

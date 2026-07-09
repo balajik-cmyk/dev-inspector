@@ -10,7 +10,9 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
+    "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "@balajik-cmyk/dev-inspector": ["../src/index.ts"]
     }
   },

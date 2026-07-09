@@ -2,7 +2,6 @@ import * as React from "react";
 import { sectionToCss, specToCss } from "../core/inspectorCss";
 import type { InspectorSection, InspectorSpec } from "../core/types";
 import { CopyButton } from "./CopyButton";
-import { IconX } from "./icons";
 import styles from "../styles/inspector.module.css";
 
 function SectionBlock({
@@ -39,7 +38,6 @@ function SectionBlock({
 
 export function CssPanel({
   spec,
-  onClose,
   onCopy,
   showAnnotationForm,
   annotationForm,
@@ -47,7 +45,6 @@ export function CssPanel({
   embedded = false,
 }: {
   spec: InspectorSpec;
-  onClose: () => void;
   onCopy?: (text: string) => void;
   showAnnotationForm?: boolean;
   annotationForm?: React.ReactNode;
@@ -65,14 +62,6 @@ export function CssPanel({
         </div>
         <div className={styles.panelActions}>
           <CopyButton text={allCss} label="Copy all CSS" onCopied={onCopy} />
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnIcon} ${styles.btnGhost}`}
-            onClick={onClose}
-            aria-label="Close inspector panel"
-          >
-            <IconX />
-          </button>
         </div>
       </div>
 
